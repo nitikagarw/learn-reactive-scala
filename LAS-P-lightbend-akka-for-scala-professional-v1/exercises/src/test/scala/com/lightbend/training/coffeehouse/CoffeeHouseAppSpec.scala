@@ -4,11 +4,17 @@
 
 package com.lightbend.training.coffeehouse
 
-import akka.testkit.TestProbe
+import akka.actor.{Actor, Props}
+import akka.testkit.{EventFilter, TestActorRef, TestProbe}
+import akka.util.Timeout
+
+import scala.concurrent.duration.DurationInt
 
 class CoffeeHouseAppSpec extends BaseAkkaSpec {
 
   import CoffeeHouseApp._
+
+  implicit val statusTimeout = 100 milliseconds: Timeout
 
   "Calling argsToOpts" should {
     "return the correct opts for the given args" in {
@@ -39,6 +45,35 @@ class CoffeeHouseAppSpec extends BaseAkkaSpec {
         override def createCoffeeHouse() = probe.ref
       }
       probe.receiveN(2) shouldEqual List.fill(2)(CoffeeHouse.CreateGuest(Coffee.Akkaccino, Int.MaxValue))
+    }
+  }
+
+  "Calling getStatus" should {
+    "result in logging the AskTimeoutException at error for CoffeeHouse not responding" in {
+      new CoffeeHouseApp(system) {
+        EventFilter.error(pattern = ".*AskTimeoutException.*") intercept status()
+        override def createCoffeeHouse() = system.deadLetters
+      }
+    }
+    "result in logging the status at info" in {
+      new CoffeeHouseApp(system) {
+        EventFilter.info(pattern = ".*42.*") intercept status()
+        override def createCoffeeHouse() = system.actorOf(Props(new Actor {
+          override def receive = {
+            case CoffeeHouse.GetStatus => sender() ! CoffeeHouse.Status(42)
+          }
+        }))
+      }
+    }
+  }
+
+  "Sending GetStatus to CoffeeHouse" should {
+    "result in a Status response" in {
+      val sender = TestProbe()
+      implicit val ref = sender.ref
+      val coffeeHouse = TestActorRef(new CoffeeHouse(Int.MaxValue), "get-status")
+      coffeeHouse ! CoffeeHouse.GetStatus
+      sender.expectMsg(CoffeeHouse.Status(0))
     }
   }
 }

@@ -14,7 +14,7 @@ class BaristaSpec extends BaseAkkaSpec {
       val sender = TestProbe()
       implicit val ref = sender.ref
       val barista = system.actorOf(Barista.props(100 milliseconds, 100))
-      sender.within(50 milliseconds, 1000 milliseconds) { // busy is innccurate, so we relax the timing constraints.
+      sender.within(50 milliseconds, 200 milliseconds) { // The time is not extremely accurate, so we relax the timing constraints.
         barista ! Barista.PrepareCoffee(Coffee.Akkaccino, system.deadLetters)
         sender.expectMsg(Barista.CoffeePrepared(Coffee.Akkaccino, system.deadLetters))
       }
