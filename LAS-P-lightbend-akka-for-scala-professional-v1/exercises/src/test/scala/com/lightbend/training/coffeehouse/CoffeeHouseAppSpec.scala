@@ -4,7 +4,9 @@
 
 package com.lightbend.training.coffeehouse
 
-class CoffeeHouseAppSpec extends BaseSpec {
+import akka.testkit.TestProbe
+
+class CoffeeHouseAppSpec extends BaseAkkaSpec {
 
   import CoffeeHouseApp._
 
@@ -19,6 +21,24 @@ class CoffeeHouseAppSpec extends BaseSpec {
       System.setProperty("c", "")
       applySystemProperties(Map("a" -> "1", "-Dc" -> "2"))
       System.getProperty("c") should ===("2")
+    }
+  }
+
+  "Creating CoffeeHouseApp" should {
+    "result in creating a top-level actor named 'coffee-house'" in {
+      new CoffeeHouseApp(system)
+      TestProbe().expectActor("/user/coffee-house")
+    }
+  }
+
+  "Calling createGuest" should {
+    "result in sending CreateGuest to CoffeeHouse count number of times" in {
+      val probe = TestProbe()
+      new CoffeeHouseApp(system) {
+        createGuest(2, Coffee.Akkaccino, Int.MaxValue)
+        override def createCoffeeHouse() = probe.ref
+      }
+      probe.receiveN(2) shouldEqual List.fill(2)(CoffeeHouse.CreateGuest(Coffee.Akkaccino, Int.MaxValue))
     }
   }
 }
