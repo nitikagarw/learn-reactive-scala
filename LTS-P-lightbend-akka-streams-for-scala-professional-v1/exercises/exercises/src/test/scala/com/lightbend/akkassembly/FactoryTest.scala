@@ -13,7 +13,8 @@ class FactoryTest extends FreeSpec with AkkaSpec {
       val engineShop = new EngineShop(shipmentSize = 20)
       val wheelShop = new WheelShop()
       val qualityAssurance = new QualityAssurance()
-      val factory = new Factory(bodyShop, paintShop, engineShop, wheelShop, qualityAssurance)
+      val upgradeShop = new UpgradeShop
+      val factory = new Factory(bodyShop, paintShop, engineShop, wheelShop, qualityAssurance, upgradeShop)
 
       val cars = factory.orderCars(12).futureValue
 
@@ -27,7 +28,9 @@ class FactoryTest extends FreeSpec with AkkaSpec {
       assert(engines.toSet.size === 12)
 
       val upgrades = cars.map(_.upgrade)
-      assert(upgrades.count(_.isEmpty) === 12)
+      assert(upgrades.count(_.isEmpty) === 4)
+      assert(upgrades.count(_.contains(Upgrade.DX)) === 4)
+      assert(upgrades.count(_.contains(Upgrade.Sport)) === 4)
     }
   }
 }
