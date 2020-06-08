@@ -9,7 +9,8 @@ class Factory(bodyShop: BodyShop,
               paintShop: PaintShop,
               engineShop: EngineShop,
               wheelShop: WheelShop,
-              qualityAssurance: QualityAssurance)
+              qualityAssurance: QualityAssurance,
+              upgradeShop: UpgradeShop)
              (implicit materializer: Materializer) {
 
   def orderCars(quantity: Int): Future[Seq[Car]] = {
@@ -17,9 +18,9 @@ class Factory(bodyShop: BodyShop,
       .via(paintShop.paint)
       .via(engineShop.installEngine)
       .via(wheelShop.installWheels)
+      .via(upgradeShop.installUpgrades)
       .via(qualityAssurance.inspect)
       .take(quantity)
       .runWith(Sink.seq)
   }
-
 }

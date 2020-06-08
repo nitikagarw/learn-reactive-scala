@@ -1,9 +1,9 @@
 package com.lightbend.akkassembly
 
-import akka.{Done, NotUsed}
-import akka.event.LoggingAdapter
 import akka.stream.Materializer
-import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.{NotUsed, Done}
+import akka.event.LoggingAdapter
+import akka.stream.scaladsl.{Source, Flow, Sink}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -17,9 +17,11 @@ class Auditor(implicit materializer: Materializer) {
     loggingAdapter.debug(elem.toString)
   }
 
-  def sample(sampleSize: FiniteDuration): Flow[Car, Car, NotUsed] = Flow[Car].takeWithin(sampleSize)
+  def sample(sampleSize: FiniteDuration): Flow[Car, Car, NotUsed] = {
+    Flow[Car].takeWithin(sampleSize)
+  }
 
-  def audit(source: Source[Car, NotUsed], sampleSize: FiniteDuration): Future[Int] = {
-    source.via(sample(sampleSize)).runWith(count)
+  def audit(cars: Source[Car, NotUsed], sampleSize: FiniteDuration): Future[Int] = {
+    cars.via(sample(sampleSize)).runWith(count)
   }
 }
