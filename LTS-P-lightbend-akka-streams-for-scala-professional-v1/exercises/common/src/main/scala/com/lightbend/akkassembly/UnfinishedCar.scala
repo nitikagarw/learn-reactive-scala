@@ -7,7 +7,7 @@ import scala.util.Random
 
 
 object UnfinishedCar {
-  private val random = new Random(4)
+  private val random = new Random(7)
   private val busyTimeScale = 10
   private def calculateRandomMillis = random.nextInt(busyTimeScale).millis
 
@@ -22,22 +22,23 @@ case class UnfinishedCar(color: Option[Color] = None,
                          engine: Option[Engine] = None,
                          wheels: Seq[Wheel] = Seq.empty,
                          upgrade: Option[Upgrade] = None) {
+
   import UnfinishedCar._
 
   def paint(color: Color): UnfinishedCar = {
-    busy(0.millis)
+    busy(paintTime)
     copy(color = Some(color))
   }
   def installEngine(engine: Engine): UnfinishedCar = {
-    busy(0.millis)
+    busy(installEngineTime)
     copy(engine = Some(engine))
   }
   def installWheels(wheels: Seq[Wheel]): UnfinishedCar = {
-    busy(0.millis)
+    busy(installWheelsTime)
     copy(wheels = wheels)
   }
   def installUpgrade(upgrade: Upgrade): UnfinishedCar = {
-    busy(0.millis)
+    busy(installUpgradeTime)
     copy(upgrade = Some(upgrade))
   }
 }
