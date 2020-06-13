@@ -7,24 +7,20 @@ import akka.http.scaladsl.model._
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import lowLevelServer.GuitarDB.{
-  CreateGuitar,
-  FindAllGuitars,
-  FindGuitar,
-  GuitarCreated
-}
 import spray.json._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-case class Guitar(make: String, model: String)
+case class Guitar(make: String, model: String, quantity: Int = 0)
 
 object GuitarDB {
   case class CreateGuitar(guitar: Guitar)
   case class GuitarCreated(id: Int)
   case class FindGuitar(id: Int)
   case object FindAllGuitars
+  case class AddQuantity(id: Int, quantity: Int)
+  case class FindGuitarsInStock(inStock: Boolean)
 }
 class GuitarDB extends Actor with ActorLogging {
   import GuitarDB._
@@ -45,23 +41,49 @@ class GuitarDB extends Actor with ActorLogging {
       guitars = guitars + (currentGuitarId -> guitar)
       sender() ! GuitarCreated(currentGuitarId)
       currentGuitarId += 1
+
+    case AddQuantity(id, quantity) =>
+      log.info(s"Trying to add $quantity items for guitar $id")
+      val guitar: Option[Guitar] = guitars.get(id)
+      val newGuitar: Option[Guitar] = guitar.map {
+        case Guitar(make, model, q) => Guitar(make, model, q + quantity)
+      }
+
+      newGuitar.foreach(guitar => guitars += (id -> guitar))
+      sender() ! newGuitar
+
+    case FindGuitarsInStock(insTock) =>
+      log.info(
+        s"Searching for all guitars ${if (insTock) "in" else "out of"} stock"
+      )
+      if (insTock)
+        sender() ! guitars.values.filter(_.quantity > 0)
+      else
+        sender() ! guitars.values.filter(_.quantity == 0)
+
   }
 }
 
 trait GuitarStoreJsonProtocol extends DefaultJsonProtocol {
-  implicit val guitarFormat: RootJsonFormat[Guitar] = jsonFormat2(Guitar)
+  implicit val guitarFormat: RootJsonFormat[Guitar] = jsonFormat3(Guitar)
 }
 
 object LowLevelRest extends App with GuitarStoreJsonProtocol {
 
   implicit val system: ActorSystem = ActorSystem("LowLevelRest")
   implicit val materializer: ActorMaterializer = ActorMaterializer()
+  import GuitarDB._
   import system.dispatcher
 
   /*
   - GET on localhost:8080/api/guitar => Return All guitars in the store
   - GET on localhost:8080/api/guitar?id=X => fetches the guitar associated with id X
   - POST on localhost:8080/api/guitar => Insert guitar into the store
+   */
+  /*
+  Exercise: Enhance the Guitar case class with a quantity field, by default 0
+  - GET on /api/guitar/inventory?inStock=true/false => returns the guitar in stock as JSON
+  - POST on /api/guitar/inventory?id=X&quantity=Y => add Y guitars to the stock of guitar with id = X
    */
 
   //JSON marshalling
@@ -73,7 +95,8 @@ object LowLevelRest extends App with GuitarStoreJsonProtocol {
     """
     |{
     |  "make": "Fender",
-    |  "model": "StratoCaster"
+    |  "model": "StratoCaster",
+    |  "quantity": 5
     |}
     |""".stripMargin
 
@@ -153,6 +176,53 @@ object LowLevelRest extends App with GuitarStoreJsonProtocol {
           HttpResponse(StatusCodes.OK)
         }
       }
+    case HttpRequest(
+        HttpMethods.GET,
+        uri @ Uri.Path("/api/guitar/inventory"),
+        _,
+        _,
+        _
+        ) =>
+      val query = uri.query()
+      val inStockOption = query.get("inStock").map(_.toBoolean)
+      inStockOption match {
+        case Some(inStock) =>
+          val guitarsFuture: Future[List[Guitar]] =
+            (guitarDb ? FindGuitarsInStock(inStock)).mapTo[List[Guitar]]
+          guitarsFuture.map { guitar =>
+            HttpResponse(
+              entity = HttpEntity(
+                ContentTypes.`application/json`,
+                guitar.toJson.prettyPrint
+              )
+            )
+          }
+        case None => Future(HttpResponse(StatusCodes.BadRequest))
+      }
+
+    case HttpRequest(
+        HttpMethods.POST,
+        uri @ Uri.Path("/api/guitar/inventory"),
+        _,
+        _,
+        _
+        ) =>
+      val query = uri.query()
+      val guitarId: Option[Int] = query.get("id").map(_.toInt)
+      val guitarQuantity: Option[Int] = query.get("quantity").map(_.toInt)
+
+      val validGuitarResponseFuture: Option[Future[HttpResponse]] = for {
+        id <- guitarId
+        quantity <- guitarQuantity
+      } yield {
+        val newGuitarFuture: Future[Option[Guitar]] =
+          (guitarDb ? AddQuantity(id, quantity)).mapTo[Option[Guitar]]
+        newGuitarFuture.map(_ => HttpResponse(StatusCodes.OK))
+      }
+      validGuitarResponseFuture.getOrElse(
+        Future(HttpResponse(StatusCodes.BadRequest))
+      )
+
     case request: HttpRequest =>
       request.discardEntityBytes()
       Future { HttpResponse(status = StatusCodes.NotFound) }
