@@ -1,0 +1,9 @@
+{
+  "creditCard": {
+    "serialNumber": "1234-1234-1234-1234",
+    "securityCode": "6789",
+    "account": "RX-56-SJ-234"
+  },
+  "receiverAccount": "RX-56-PR-768",
+  "amount": 200
+}
