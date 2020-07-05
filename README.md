@@ -11,6 +11,7 @@ The list of courses, their links and the worksheets/projects created by followin
 [Lightbend Akka for Scala - Professional][3] | [Click here][4]
 [Lightbend Akka Streams for Scala - Professional][5] | [Click here][6]
 [Akka HTTP with Scala][7] | [Click here][8]
+[Akka Streams with Scala][9] | [Click here][10]
 
 
 
@@ -25,3 +26,5 @@ The list of courses, their links and the worksheets/projects created by followin
 [6]: https://github.com/nitikagarw/learn-reactive-scala/tree/master/LTS-P-lightbend-akka-streams-for-scala-professional-v1
 [7]: https://www.udemy.com/course/akka-http/
 [8]: https://github.com/nitikagarw/learn-reactive-scala/tree/master/akka-http-start
+[9]: https://www.udemy.com/course/akka-streams/
+[10]: https://github.com/nitikagarw/learn-reactive-scala/tree/master/akka-streams
